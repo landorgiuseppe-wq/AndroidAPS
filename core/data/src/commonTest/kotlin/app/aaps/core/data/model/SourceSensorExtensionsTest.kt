@@ -1,7 +1,6 @@
 package app.aaps.core.data.model
 
 import kotlin.test.Test
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -34,25 +33,25 @@ class SourceSensorExtensionsTest {
     }
 
     @Test
-    fun `medtronic does not support advanced filtering`() {
-        assertFalse(SourceSensor.MM_600_SERIES.advancedFilteringSupported())
-        assertFalse(SourceSensor.MM_SIMPLERA.advancedFilteringSupported())
+    fun `medtronic supports advanced filtering`() {
+        assertTrue(SourceSensor.MM_600_SERIES.advancedFilteringSupported())
+        assertTrue(SourceSensor.MM_SIMPLERA.advancedFilteringSupported())
     }
 
     @Test
-    fun `eversense does not support advanced filtering`() {
-        assertFalse(SourceSensor.EVERSENSE.advancedFilteringSupported())
+    fun `eversense supports advanced filtering`() {
+        assertTrue(SourceSensor.EVERSENSE.advancedFilteringSupported())
     }
 
     @Test
-    fun `libre 1 sensors do not support advanced filtering`() {
-        assertFalse(SourceSensor.LIBRE_1_OTHER.advancedFilteringSupported())
-        assertFalse(SourceSensor.LIBRE_1_NET.advancedFilteringSupported())
-        assertFalse(SourceSensor.LIBRE_1_BUBBLE.advancedFilteringSupported())
+    fun `libre 1 sensors support advanced filtering`() {
+        assertTrue(SourceSensor.LIBRE_1_OTHER.advancedFilteringSupported())
+        assertTrue(SourceSensor.LIBRE_1_NET.advancedFilteringSupported())
+        assertTrue(SourceSensor.LIBRE_1_BUBBLE.advancedFilteringSupported())
     }
 
     @Test
-    fun `unknown does not support advanced filtering`() {
-        assertFalse(SourceSensor.UNKNOWN.advancedFilteringSupported())
+    fun `unknown supports advanced filtering`() {
+        assertTrue(SourceSensor.UNKNOWN.advancedFilteringSupported())
     }
 }
