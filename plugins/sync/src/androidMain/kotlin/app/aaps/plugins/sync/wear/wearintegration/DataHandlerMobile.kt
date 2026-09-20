@@ -219,6 +219,8 @@ class DataHandlerMobile(
             (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancel(Constants.NOTIFICATION_ID)
         }
         onEvent<EventData.ActionResendData> { resendData(it.from) }
+        // The watch's word on Watch Face Push, kept by WearPlugin for the wear screen
+        onEvent<EventData.WatchFacePushStatus> { rxBus.send(EventWearUpdateGui(watchFacePushStatus = it)) }
         onEvent<EventData.ActionPumpStatus> {
             sendToWear(
                 EventData.ConfirmAction(
@@ -304,7 +306,10 @@ class DataHandlerMobile(
                 rxBus.send(EventShowSnackbar("aborting: previously applied constraint changed", EventShowSnackbar.Type.Warning))
                 sendError("aborting: previously applied constraint changed")
             } else
-                wizardBolusExecutor.deliverFillBolus(it.insulin, null, Sources.Wear, ::sendError)
+                // The executor already wrote the right sentence for both cases (a failure and a cancel), so the
+                // watch shows its comment as-is. The watch has no neutral terminal screen — a cancel still lands
+                // under the red "Error" heading — but the words are correct.
+                wizardBolusExecutor.deliverFillBolus(it.insulin, null, Sources.Wear, onError = { failure -> sendError(failure.comment) })
         }
         // These two are the ones that actually recompute a dose. The executor they delegate to already
         // refuses before init, so this is defence in depth - but it keeps the refusal in one place with the
@@ -1108,7 +1113,8 @@ class DataHandlerMobile(
                 insulinButtonIncrement1 = preferences.get(DoubleKey.OverviewInsulinButtonIncrement1),
                 insulinButtonIncrement2 = preferences.get(DoubleKey.OverviewInsulinButtonIncrement2),
                 carbsButtonIncrement1 = preferences.get(IntKey.OverviewCarbsButtonIncrement1),
-                carbsButtonIncrement2 = preferences.get(IntKey.OverviewCarbsButtonIncrement2)
+                carbsButtonIncrement2 = preferences.get(IntKey.OverviewCarbsButtonIncrement2),
+                pushedWatchface = preferences.get(StringKey.WearPushedWatchface)
             )
         )
         // QuickWizard
