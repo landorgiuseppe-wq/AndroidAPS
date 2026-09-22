@@ -42,6 +42,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.json.JSONException
 import org.json.JSONObject
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -89,6 +90,19 @@ class LoopPluginTest : TestBaseWithProfile() {
             processedDeviceStatusData, pumpStatusProvider, decimalFormatter, ch, loopNotifier, testScope
         )
         whenever(activePlugin.activePump).thenReturn(virtualPumpPlugin)
+    }
+
+    /**
+     * Leave no live coroutine behind.
+     *
+     * [testScope] is a real scope on [Dispatchers.Unconfined], so a job left pending here does not die
+     * with the test - it waits out its `delay` and then runs against a half-stubbed plugin. The throw
+     * lands in kotlinx-coroutines-test's process-wide collector and is reported as
+     * `UncaughtExceptionsBeforeTest` against whichever unrelated `runTest` happens to start next, which
+     * is what it did to `allowedNextModes returns emptyList if profile is invalid`.
+     */
+    @AfterEach fun cancelPendingWork() {
+        loopPlugin.smbFallbackJob?.cancel()
     }
 
     @Test
@@ -814,5 +828,77 @@ class LoopPluginTest : TestBaseWithProfile() {
 
         assertThat(loopPlugin.lastRun?.tbrSetByPump).isEqualTo(enacted)
         assertThat(loopPlugin.lastRun?.lastOpenModeAccept).isNotEqualTo(0L)
+    }
+
+    /**
+     * Accepting an open-loop suggestion does nothing while the queue is held for a settings import.
+     *
+     * This path enacts OUTSIDE `invokeMutex` and is reachable from the phone and the watch, so the
+     * guard in `invoke` does not cover it. Held, the executor picks nothing up, so enacting would leave
+     * the temp basal in the queue to land after the import - against a driver that was just stopped and
+     * restarted. Waiting instead deadlocks: `withHold` raises the flag before it waits.
+     */
+    @Test
+    fun `acceptChangeRequest enacts nothing while the queue is held`() = runTest {
+        // Everything else is set up so the request WOULD be enacted - a pump that is initialized, not
+        // suspended, with a base rate and no running TBR. Without that the early return in
+        // applyTBRRequest satisfies the assertions on its own and the test proves nothing, which is
+        // what the first version of it did.
+        whenever(profileFunction.getProfile()).thenReturn(mock<EffectiveProfile>())
+        whenever(virtualPumpPlugin.isInitialized()).thenReturn(true)
+        whenever(virtualPumpPlugin.isSuspended()).thenReturn(false)
+        whenever(virtualPumpPlugin.pumpDescription).thenReturn(PumpDescription().apply { basalStep = 0.05 })
+        whenever(virtualPumpPlugin.baseBasalRate).thenReturn(PumpRate(1.0))
+        whenever(ch.fromPump(any<PumpRate>())).thenReturn(1.0)
+        whenever(processedTbrEbData.getTempBasalIncludingConvertedExtended(anyLong())).thenReturn(null)
+        whenever(commandQueue.isHeld()).thenReturn(true)
+
+        val request = mock<APSResult>()
+        whenever(request.isTempBasalRequested).thenReturn(true)
+        whenever(request.rate).thenReturn(2.0)
+        whenever(request.duration).thenReturn(30)
+        whenever(request.usePercent).thenReturn(false)
+        loopPlugin.lastRun = Loop.LastRun().apply {
+            this.constraintsProcessed = request
+            this.lastAPSRun = dateUtil.now()
+        }
+
+        loopPlugin.acceptChangeRequest()
+
+        verify(commandQueue, never()).tempBasalAbsolute(any(), any(), any(), any(), any())
+        verify(commandQueue, never()).tempBasalPercent(any(), any(), any(), any(), any())
+        assertThat(loopPlugin.lastRun?.lastOpenModeAccept).isEqualTo(0L)
+    }
+
+    /**
+     * The deferred SMB fallback must not outlive the plugin.
+     *
+     * It re-runs the loop a second later, so a plugin stopped in between - which a settings import
+     * does to every plugin - would otherwise have it wake up and queue commands against a pump driver
+     * that is being torn down. It ran on the application scope and nothing owned it.
+     */
+    @Test
+    fun `onStop cancels the deferred SMB fallback`() = runTest {
+        loopPlugin.scheduleSmbFallback(allowNotification = false)
+        val scheduled = loopPlugin.smbFallbackJob
+        assertThat(scheduled).isNotNull()
+        assertThat(scheduled!!.isActive).isTrue()
+
+        loopPlugin.onStop()
+
+        assertThat(scheduled.isCancelled).isTrue()
+    }
+
+    /** Two failures in the same second schedule one re-run, not two stacked on the invoke mutex. */
+    @Test
+    fun `scheduling the fallback again replaces the pending one`() = runTest {
+        loopPlugin.scheduleSmbFallback(allowNotification = false)
+        val first = loopPlugin.smbFallbackJob
+
+        loopPlugin.scheduleSmbFallback(allowNotification = false)
+
+        assertThat(first!!.isCancelled).isTrue()
+        assertThat(loopPlugin.smbFallbackJob).isNotSameInstanceAs(first)
+        assertThat(loopPlugin.smbFallbackJob!!.isActive).isTrue()
     }
 }
