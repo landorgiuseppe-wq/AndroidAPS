@@ -82,8 +82,7 @@ import app.aaps.pump.omnipod.common.R as CommonR
 // unscoped so each screen gets its own.
 @ContributesIntoMap(AppScope::class, binding = binding<ViewModel>())
 @ViewModelKey
-@Inject
-class DashOverviewViewModel(
+class DashOverviewViewModel @Inject constructor(
     private val rh: ResourceHelper,
     private val podStateManager: OmnipodDashPodStateManager,
     private val omnipodDashPumpPlugin: OmnipodDashPumpPlugin,
@@ -400,7 +399,7 @@ class DashOverviewViewModel(
                 label = rh.gs(CommonR.string.omnipod_common_pod_management_button_discard_pod),
                 icon = Icons.Filled.Delete,
                 category = ActionCategory.MANAGEMENT,
-                visible = podStateManager.uniqueId != null && podStateManager.activationProgress.isBefore(ActivationProgress.SET_UNIQUE_ID),
+                visible = podStateManager.uniqueId != null,
                 onClick = { onDiscardPodClicked() }
             )
         )
