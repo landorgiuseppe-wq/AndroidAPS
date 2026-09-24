@@ -1,6 +1,9 @@
 package app.aaps.pump.omnipod.dash.ui.compose
 
 import android.content.Context
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Delete
@@ -10,7 +13,13 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.aaps.core.interfaces.configuration.Config
@@ -34,6 +43,8 @@ import app.aaps.core.ui.compose.StatusLevel
 import app.aaps.core.ui.compose.pump.ActionCategory
 import app.aaps.core.ui.compose.pump.PumpAction
 import app.aaps.core.ui.compose.pump.PumpCommunicationStatus
+import app.aaps.core.ui.compose.pump.PumpInfoComposable
+import app.aaps.core.ui.compose.pump.PumpInfoInterface
 import app.aaps.core.ui.compose.pump.PumpInfoRow
 import app.aaps.core.ui.compose.pump.PumpOverviewUiState
 import app.aaps.core.ui.compose.pump.tickerFlow
@@ -151,7 +162,7 @@ class DashOverviewViewModel @Inject constructor(
 
     // region Info Rows
 
-    private fun buildInfoRows(): List<PumpInfoRow> = buildList {
+    private fun buildInfoRows(): List<PumpInfoInterface> = buildList {
         val initialized = podStateManager.activationProgress.isAtLeast(ActivationProgress.SET_UNIQUE_ID)
 
         // Bluetooth section (Dash-specific)
@@ -161,6 +172,26 @@ class DashOverviewViewModel @Inject constructor(
                 value = podStateManager.bluetoothAddress ?: PLACEHOLDER
             )
         )
+
+        if (podStateManager.uniqueId != null) {
+            add(object : PumpInfoComposable {
+                override fun composableContent(): @Composable () -> Unit = {
+                    FilledTonalButton(
+                        onClick = { onDiscardPodClicked() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Delete,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.size(8.dp))
+                        Text(text = rh.gs(CommonR.string.omnipod_common_pod_management_button_discard_pod))
+                    }
+                }
+                override fun hasDividerOnEnd(): Boolean = true
+            })
+        }
 
         val connPct = podStateManager.connectionSuccessRatio() * 100
         val connAttempts = podStateManager.failedConnectionsAfterRetries + podStateManager.successfulConnectionAttemptsAfterRetries
@@ -394,13 +425,6 @@ class DashOverviewViewModel @Inject constructor(
                 icon = Icons.Filled.History,
                 category = ActionCategory.MANAGEMENT,
                 onClick = { _events.tryEmit(OmnipodOverviewEvent.ShowHistory) }
-            ),
-            PumpAction(
-                label = rh.gs(CommonR.string.omnipod_common_pod_management_button_discard_pod),
-                icon = Icons.Filled.Delete,
-                category = ActionCategory.MANAGEMENT,
-                visible = podStateManager.uniqueId != null,
-                onClick = { onDiscardPodClicked() }
             )
         )
     }
