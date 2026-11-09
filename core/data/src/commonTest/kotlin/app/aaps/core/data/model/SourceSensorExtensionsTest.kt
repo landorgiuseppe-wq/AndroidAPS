@@ -11,61 +11,10 @@ import kotlin.test.assertTrue
 class SourceSensorExtensionsTest {
 
     @Test
-    fun `dexcom native sensors support advanced filtering`() {
-        assertTrue(SourceSensor.DEXCOM_UNKNOWN.advancedFilteringSupported())
-        assertTrue(SourceSensor.DEXCOM_G6.advancedFilteringSupported())
-        assertTrue(SourceSensor.DEXCOM_G7.advancedFilteringSupported())
-        assertTrue(SourceSensor.DEXCOM_G6.advancedFilteringSupported())
-        assertTrue(SourceSensor.DEXCOM_G7.advancedFilteringSupported())
-        assertTrue(SourceSensor.DEXCOM_G7.advancedFilteringSupported())
-    }
-
-    @Test
-    fun `libre 2 and 3 support advanced filtering`() {
-        assertTrue(SourceSensor.LIBRE_2.advancedFilteringSupported())
-        assertTrue(SourceSensor.LIBRE_2.advancedFilteringSupported())
-        assertTrue(SourceSensor.LIBRE_3.advancedFilteringSupported())
-    }
-
-    @Test
-    fun `syai and random support advanced filtering`() {
-        assertTrue(SourceSensor.SYAI_TAG.advancedFilteringSupported())
-        assertTrue(SourceSensor.RANDOM.advancedFilteringSupported())
-    }
-
-    @Test
-    fun `medtronic does not support advanced filtering`() {
-        assertFalse(SourceSensor.MM_600_SERIES.advancedFilteringSupported())
-        assertFalse(SourceSensor.MM_SIMPLERA.advancedFilteringSupported())
-    }
-
-    @Test
-    fun `eversense does not support advanced filtering`() {
-        assertFalse(SourceSensor.EVERSENSE.advancedFilteringSupported())
-    }
-
-    @Test
-    fun `libre 1 sensors do not support advanced filtering`() {
-        assertFalse(SourceSensor.LIBRE_1.advancedFilteringSupported())
-        assertFalse(SourceSensor.LIBRE_1.advancedFilteringSupported())
-        assertFalse(SourceSensor.LIBRE_1.advancedFilteringSupported())
-    }
-
-    @Test
-    fun `unknown does not support advanced filtering`() {
-        assertFalse(SourceSensor.UNKNOWN.advancedFilteringSupported())
-    }
-
-    @Test
-    fun `dexcom share follow supports advanced filtering but medtronic carelink does not`() {
-        assertTrue(SourceSensor.DEXCOM_UNKNOWN.advancedFilteringSupported())
-        assertFalse(SourceSensor.MM_UNKNOWN.advancedFilteringSupported())
-    }
-
-    @Test
-    fun `new xdrip device sources do not support advanced filtering`() {
-        assertFalse(SourceSensor.MEDTRUM_UNKNOWN.advancedFilteringSupported())
-        assertFalse(SourceSensor.GLUPRO.advancedFilteringSupported())
+    fun `all sensors support advanced filtering`() {
+        SourceSensor.entries.forEach { sensor ->
+            assertTrue(sensor.advancedFilteringSupported(), "Sensor $sensor should support advanced filtering")
+        }
     }
 
     @Test
@@ -89,25 +38,9 @@ class SourceSensorExtensionsTest {
     }
 
     @Test
-    fun `juggluco ng sensors get no advanced filtering`() {
-        assertFalse(SourceSensor.SINOCARE.advancedFilteringSupported())
-        assertFalse(SourceSensor.ANYTIME.advancedFilteringSupported())
-        assertFalse(SourceSensor.GLUTEC.advancedFilteringSupported())
-    }
-
-    @Test
     fun `both aidex generations need the flat check`() {
         assertTrue(SourceSensor.AIDEX.needsFlatBgCheck())
         assertTrue(SourceSensor.AIDEX_X.needsFlatBgCheck())
-    }
-
-    @Test
-    fun `juggluco sensors get no advanced filtering except libre and dexcom`() {
-        assertFalse(SourceSensor.SIBIONIC_GS1.advancedFilteringSupported())
-        assertFalse(SourceSensor.SIBIONIC_GS3.advancedFilteringSupported())
-        assertFalse(SourceSensor.ACCU_CHEK.advancedFilteringSupported())
-        assertFalse(SourceSensor.CARESENS_AIR.advancedFilteringSupported())
-        assertFalse(SourceSensor.AIDEX_X.advancedFilteringSupported())
     }
 
     @Test
