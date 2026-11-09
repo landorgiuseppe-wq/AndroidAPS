@@ -75,4 +75,10 @@ class ActionProfileSwitchPercentTest : ActionsTestBase() {
         assertThat(sut.pct.value).isWithin(0.001).of(100.0)
         assertThat(sut.duration.getMinutes().toDouble()).isWithin(0.001).of(30.0)
     }
+
+    @Test fun isValidAllowsUpTo200Percent() = runTest {
+        sut.pct = InputPercent(200.0)
+        sut.duration = InputDuration(30, InputDuration.TimeUnit.MINUTES)
+        assertThat(sut.isValid()).isTrue()
+    }
 }
