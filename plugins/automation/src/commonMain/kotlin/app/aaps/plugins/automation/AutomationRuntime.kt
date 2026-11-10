@@ -578,8 +578,18 @@ class AutomationRuntime(
         val iterator = eventsLock.withLock { automationEvents.toMutableList().iterator() }
         while (iterator.hasNext()) {
             val event = iterator.next()
-            if (!event.isEnabled || event.userAction) continue
+            if (!event.isEnabled) continue
             if (!event.systemAction && !commonEventsEnabled) continue
+            if (event.userAction) {
+                if ((event.trigger.list.isNotEmpty() || event.getPreconditions().list.isNotEmpty()) &&
+                    event.shouldRun() && event.canRun() && event.preconditionCanRun()
+                ) {
+                    val titleText = event.title.ifBlank { rh.gs(AutomationStrings.user_action) }
+                    actionFactory.actionNotification().apply { text.value = titleText }.doAction()
+                    event.lastRun = dateUtil.now()
+                }
+                continue
+            }
             val ran = event.shouldRun() && runEvent(event)
             // "Stop processing" stops the rules below for as long as this rule's conditions are true.
             // It used to stop them after every check of the rule, so the rules below never ran while
