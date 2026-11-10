@@ -6,6 +6,9 @@ import app.aaps.core.interfaces.constraints.Constraint
 import app.aaps.core.interfaces.constraints.ConstraintsChecker
 import app.aaps.core.interfaces.location.LocationServiceController
 import app.aaps.core.interfaces.logging.UserEntryLogger
+import app.aaps.core.interfaces.notifications.AlarmSound
+import app.aaps.core.interfaces.notifications.NotificationId
+import app.aaps.core.interfaces.notifications.NotificationLevel
 import app.aaps.core.interfaces.plugin.PluginBase
 import app.aaps.core.interfaces.pump.PumpEnactResult
 import app.aaps.core.interfaces.receivers.ReceiverStatusStore
@@ -108,7 +111,7 @@ class AutomationRuntimeProcessingTest : TestBaseWithProfile() {
         runtime = AutomationRuntime(
             mock<LocationPermissions>(), eventFactory, aapsLogger, text, preferences, loop, rxBus, constraintChecker,
             config, locationServiceController, dateUtil, activePlugin, actionFactory, triggerFactory, triggerDeps, receiverStatusStore,
-            uel, profileRepository, sceneApi, mock()
+            notificationManager, uel, profileRepository, sceneApi, mock()
         )
     }
 
@@ -295,5 +298,30 @@ class AutomationRuntimeProcessingTest : TestBaseWithProfile() {
         runtime.processActions()
 
         assertThat(belowRan).isEqualTo(1)
+    }
+
+    @Test
+    fun `a userAction rule with satisfied conditions posts a notification with sound`() = runTest {
+        val userActionEvent = eventFactory.newEvent().apply {
+            title = "Snack Notification"
+            userAction = true
+            isEnabled = true
+            trigger = TriggerConnector(triggerDeps).also { it.list.add(switchTrigger { true }) }
+        }
+        val currentEvents = runtime.events.value.toMutableList()
+        currentEvents.add(userActionEvent)
+        runtime.processEvent(userActionEvent) // adds to list
+
+        runtime.processActions()
+
+        verify(notificationManager).post(
+            eq(NotificationId.AUTOMATION_MESSAGE),
+            eq("Snack Notification"),
+            eq(NotificationLevel.IMPORTANT),
+            eq(0),
+            eq(AlarmSound.ALARM),
+            any(),
+            anyOrNull()
+        )
     }
 }
