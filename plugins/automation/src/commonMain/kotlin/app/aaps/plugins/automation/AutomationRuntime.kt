@@ -18,9 +18,6 @@ import app.aaps.core.interfaces.location.LocationServiceController
 import app.aaps.core.interfaces.logging.AAPSLogger
 import app.aaps.core.interfaces.logging.LTag
 import app.aaps.core.interfaces.logging.UserEntryLogger
-import app.aaps.core.interfaces.notifications.AlarmSound
-import app.aaps.core.interfaces.notifications.NotificationId
-import app.aaps.core.interfaces.notifications.NotificationManager
 import app.aaps.core.interfaces.plugin.ActivePlugin
 import app.aaps.core.interfaces.plugin.PermissionGroup
 import app.aaps.core.interfaces.plugin.PermissionProvider
@@ -149,7 +146,6 @@ class AutomationRuntime(
     private val triggerFactory: TriggerFactory,
     private val triggerDeps: TriggerDeps,
     private val receiverStatusStore: ReceiverStatusStore,
-    private val notificationManager: NotificationManager,
     // UI-only dependencies, forwarded to the Compose screen via [composeContent].
     private val uel: UserEntryLogger,
     private val profileRepository: ProfileRepository,
@@ -582,22 +578,8 @@ class AutomationRuntime(
         val iterator = eventsLock.withLock { automationEvents.toMutableList().iterator() }
         while (iterator.hasNext()) {
             val event = iterator.next()
-            if (!event.isEnabled) continue
+            if (!event.isEnabled || event.userAction) continue
             if (!event.systemAction && !commonEventsEnabled) continue
-            if (event.userAction) {
-                if ((event.trigger.list.isNotEmpty() || event.getPreconditions().list.isNotEmpty()) &&
-                    event.shouldRun() && event.canRun() && event.preconditionCanRun()
-                ) {
-                    val titleText = event.title.ifBlank { rh.gs(AutomationStrings.user_action) }
-                    notificationManager.post(
-                        id = NotificationId.AUTOMATION_MESSAGE,
-                        text = titleText,
-                        sound = AlarmSound.ALARM
-                    )
-                    event.lastRun = dateUtil.now()
-                }
-                continue
-            }
             val ran = event.shouldRun() && runEvent(event)
             // "Stop processing" stops the rules below for as long as this rule's conditions are true.
             // It used to stop them after every check of the rule, so the rules below never ran while
