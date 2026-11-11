@@ -18,6 +18,10 @@ import app.aaps.core.interfaces.location.LocationServiceController
 import app.aaps.core.interfaces.logging.AAPSLogger
 import app.aaps.core.interfaces.logging.LTag
 import app.aaps.core.interfaces.logging.UserEntryLogger
+import app.aaps.core.interfaces.notifications.AlarmSound
+import app.aaps.core.interfaces.notifications.NotificationAction
+import app.aaps.core.interfaces.notifications.NotificationId
+import app.aaps.core.interfaces.notifications.NotificationManager
 import app.aaps.core.interfaces.plugin.ActivePlugin
 import app.aaps.core.interfaces.plugin.PermissionGroup
 import app.aaps.core.interfaces.plugin.PermissionProvider
@@ -33,6 +37,8 @@ import app.aaps.core.interfaces.rx.events.EventWearUpdateTiles
 import app.aaps.core.interfaces.scenes.SceneAutomationApi
 import app.aaps.core.interfaces.utils.DateUtil
 import app.aaps.core.keys.LongComposedKey
+import app.aaps.core.keys.interfaces.TextRef
+import kotlinx.coroutines.launch
 import app.aaps.core.keys.StringKey
 import app.aaps.core.keys.StringNonKey
 import app.aaps.core.keys.interfaces.Preferences
@@ -146,6 +152,7 @@ class AutomationRuntime(
     private val triggerFactory: TriggerFactory,
     private val triggerDeps: TriggerDeps,
     private val receiverStatusStore: ReceiverStatusStore,
+    private val notificationManager: NotificationManager,
     // UI-only dependencies, forwarded to the Compose screen via [composeContent].
     private val uel: UserEntryLogger,
     private val profileRepository: ProfileRepository,
@@ -585,7 +592,22 @@ class AutomationRuntime(
                     event.shouldRun() && event.canRun() && event.preconditionCanRun()
                 ) {
                     val titleText = event.title.ifBlank { rh.gs(AutomationStrings.user_action) }
-                    actionFactory.actionNotification().apply { text.value = titleText }.doAction()
+                    notificationManager.post(
+                        id = NotificationId.AUTOMATION_MESSAGE,
+                        text = titleText,
+                        sound = AlarmSound.ALARM,
+                        actions = listOf(
+                            NotificationAction(
+                                buttonText = TextRef.Literal("Esegui"),
+                                action = {
+                                    scope?.launch {
+                                        runEvent(event)
+                                        notificationManager.dismiss(NotificationId.AUTOMATION_MESSAGE)
+                                    }
+                                }
+                            )
+                        )
+                    )
                     event.lastRun = dateUtil.now()
                 }
                 continue
