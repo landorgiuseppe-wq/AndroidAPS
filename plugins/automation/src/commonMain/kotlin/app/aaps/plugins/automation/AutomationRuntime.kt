@@ -592,6 +592,7 @@ class AutomationRuntime(
                     event.shouldRun() && event.canRun() && event.preconditionCanRun()
                 ) {
                     val titleText = event.title.ifBlank { rh.gs(AutomationStrings.user_action) }
+                    actionFactory.actionAlarm(titleText).doAction()
                     notificationManager.post(
                         id = NotificationId.AUTOMATION_MESSAGE,
                         text = titleText,
@@ -604,6 +605,12 @@ class AutomationRuntime(
                                         runEvent(event)
                                         notificationManager.dismiss(NotificationId.AUTOMATION_MESSAGE)
                                     }
+                                }
+                            ),
+                            NotificationAction(
+                                buttonText = TextRef.Literal(rh.gs(CoreUiStrings.close)),
+                                action = {
+                                    notificationManager.dismiss(NotificationId.AUTOMATION_MESSAGE)
                                 }
                             )
                         )
